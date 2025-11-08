@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>HTX P2P Ордера</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            padding: 10px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--tg-theme-hint-color, #999999);
+            margin-bottom: 15px;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .filters {
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .filter-group {
+            margin-bottom: 10px;
+        }
+
+        .filter-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid var(--tg-theme-hint-color, #999999);
+            border-radius: 5px;
+            font-size: 14px;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .filter-row .filter-group {
+            flex: 1;
+        }
+
+        .btn {
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            transition: opacity 0.2s;
+        }
+
+        .btn:active {
+            opacity: 0.7;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+
+        .error {
+            background: #ff4444;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        .orders-list {
+            margin-top: 15px;
+        }
+
+        .order-card {
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border: 1px solid var(--tg-theme-hint-color, #e0e0e0);
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .order-price {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--tg-theme-button-color, #3390ec);
+        }
+
+        .order-info {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--tg-theme-text-color, #000000);
+        }
+
+        .order-info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .order-info-label {
+            color: var(--tg-theme-hint-color, #999999);
+        }
+
+        .order-link {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 8px 15px;
+            background: var(--tg-theme-button-color, #3390ec);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 14px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 5px;
+        }
+
+        .badge-verified {
+            background: #4caf50;
+            color: white;
+        }
+
+        .stats {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            font-size: 12px;
+        }
+
+        .stat-item {
+            flex: 1;
+            text-align: center;
+            padding: 5px;
+            background: var(--tg-theme-bg-color, #ffffff);
+            border-radius: 5px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--tg-theme-hint-color, #999999);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 HTX P2P Ордера</h1>
+        </div>
+
+        <div class="filters">
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Монета</label>
+                    <select id="coin">
+                        <option value="USDT" selected>USDT</option>
+                        <option value="BTC">BTC</option>
+                        <option value="ETH">ETH</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Валюта</label>
+                    <select id="currency">
+                        <option value="RUB" selected>RUB</option>
+                        <option value="KZT">KZT</option>
+                        <option value="UAH">UAH</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Тип операции</label>
+                    <select id="tradeType">
+                        <option value="sell" selected>Продажа</option>
+                        <option value="buy">Покупка</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Верификация</label>
+                    <select id="verified">
+                        <option value="true" selected>Только верифицированные</option>
+                        <option value="false">Все</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Мин. сумма</label>
+                    <input type="number" id="minAmount" placeholder="Не установлено" step="0.01">
+                </div>
+                <div class="filter-group">
+                    <label>Макс. сумма</label>
+                    <input type="number" id="maxAmount" placeholder="Не установлено" step="0.01">
+                </div>
+            </div>
+
+            <button class="btn" id="loadBtn" onclick="loadOrders()">🔄 Загрузить ордера</button>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            ⏳ Загрузка ордеров...
+        </div>
+
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div id="ordersList" class="orders-list"></div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        // Настройки по умолчанию
+        const API_URL = 'https://www.htx.com/-/x/otc/v1/data/trade-market';
+        const COIN_IDS = { USDT: 2, BTC: 1, ETH: 3 };
+        const CURRENCY_IDS = { RUB: 11, KZT: 12, UAH: 13 };
+
+        // Загрузка ордеров
+        async function loadOrders() {
+            const coin = document.getElementById('coin').value;
+            const currency = document.getElementById('currency').value;
+            const tradeType = document.getElementById('tradeType').value;
+            const verified = document.getElementById('verified').value === 'true';
+            const minAmount = document.getElementById('minAmount').value;
+            const maxAmount = document.getElementById('maxAmount').value;
+
+            // Показываем загрузку
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('ordersList').innerHTML = '';
+            document.getElementById('loadBtn').disabled = true;
+
+            try {
+                const orders = await fetchOrders(coin, currency, tradeType, verified, minAmount, maxAmount);
+                displayOrders(orders);
+            } catch (error) {
+                showError('Ошибка при загрузке ордеров: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('loadBtn').disabled = false;
+            }
+        }
+
+        // Получение ордеров с API
+        async function fetchOrders(coin, currency, tradeType, verified, minAmount, maxAmount) {
+            const coinId = COIN_IDS[coin];
+            const currencyId = CURRENCY_IDS[currency];
+            const allOrders = [];
+            const maxPages = 5;
+
+            for (let page = 1; page <= maxPages; page++) {
+                const params = new URLSearchParams({
+                    coinId: coinId,
+                    currency: currencyId,
+                    tradeType: tradeType,
+                    currPage: page,
+                    blockType: 'general',
+                    online: 1
+                });
+
+                const response = await fetch(`${API_URL}?${params}`, {
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0',
+                        'Referer': 'https://www.htx.com/ru-ru/fiat-crypto/c2c-brand'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                let orders = [];
+
+                if (Array.isArray(data)) {
+                    orders = data;
+                } else if (data.data) {
+                    if (Array.isArray(data.data)) {
+                        orders = data.data;
+                    } else if (data.data.items) {
+                        orders = data.data.items;
+                    } else if (data.data.list) {
+                        orders = data.data.list;
+                    }
+                } else if (data.items) {
+                    orders = data.items;
+                }
+
+                if (orders.length === 0) break;
+
+                // Фильтрация
+                let filtered = orders;
+
+                // Фильтр по верификации
+                if (verified) {
+                    filtered = filtered.filter(o => (o.merchantLevel || 0) >= 3);
+                }
+
+                // Фильтр по сумме
+                if (minAmount || maxAmount) {
+                    filtered = filtered.filter(o => {
+                        const orderMin = parseFloat(o.minTradeLimit || 0);
+                        const orderMax = parseFloat(o.maxTradeLimit || 0);
+                        
+                        if (minAmount && maxAmount) {
+                            return !(orderMax < parseFloat(minAmount) || orderMin > parseFloat(maxAmount));
+                        } else if (minAmount) {
+                            return orderMax >= parseFloat(minAmount);
+                        } else if (maxAmount) {
+                            return orderMin <= parseFloat(maxAmount);
+                        }
+                        return true;
+                    });
+                }
+
+                // Фильтр по требованиям (без требований)
+                filtered = filtered.filter(o => {
+                    const takerLimit = parseInt(o.takerLimit || 0);
+                    return takerLimit === 0;
+                });
+
+                allOrders.push(...filtered);
+
+                // Если на странице нет верифицированных, продолжаем поиск
+                if (verified && filtered.length === 0 && page < maxPages) {
+                    continue;
+                }
+            }
+
+            return allOrders.slice(0, 20); // Ограничиваем 20 ордерами
+        }
+
+        // Отображение ордеров
+        function displayOrders(orders) {
+            const container = document.getElementById('ordersList');
+            
+            if (orders.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <div>Ордера не найдены</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = orders.map((order, index) => {
+                const price = parseFloat(order.price || 0).toFixed(2);
+                const minAmount = parseFloat(order.minTradeLimit || 0).toFixed(2);
+                const maxAmount = parseFloat(order.maxTradeLimit || 0).toFixed(2);
+                const available = parseFloat(order.tradeCount || 0).toFixed(2);
+                const completeRate = order.orderCompleteRate || 0;
+                const payTime = order.payTerm || 0;
+                const nickname = order.userName || 'N/A';
+                const merchantLevel = order.merchantLevel || 0;
+                const uid = order.uid;
+                const orderId = order.id;
+
+                const orderUrl = uid 
+                    ? `https://www.htx.com/ru-ru/fiat-crypto/trader/${uid}`
+                    : `https://www.htx.com/ru-ru/fiat-crypto/c2c-brand?advertId=${orderId}`;
+
+                return `
+                    <div class="order-card">
+                        <div class="order-header">
+                            <div>
+                                <span class="order-price">${price} ${document.getElementById('currency').value}</span>
+                                ${merchantLevel >= 3 ? '<span class="badge badge-verified">✓ Верифицирован</span>' : ''}
+                            </div>
+                        </div>
+                        <div class="order-info">
+                            <div class="order-info-row">
+                                <span class="order-info-label">Доступно:</span>
+                                <span>${available} ${document.getElementById('coin').value}</span>
+                            </div>
+                            <div class="order-info-row">
+                                <span class="order-info-label">Лимиты:</span>
+                                <span>${minAmount} - ${maxAmount} ${document.getElementById('coin').value}</span>
+                            </div>
+                            <div class="order-info-row">
+                                <span class="order-info-label">Трейдер:</span>
+                                <span>${nickname}</span>
+                            </div>
+                            <div class="stats">
+                                <div class="stat-item">
+                                    <div>Выполнено</div>
+                                    <div><strong>${completeRate}%</strong></div>
+                                </div>
+                                <div class="stat-item">
+                                    <div>Оплата</div>
+                                    <div><strong>${payTime} мин</strong></div>
+                                </div>
+                            </div>
+                        </div>
+                        <a href="${orderUrl}" target="_blank" class="order-link">
+                            🔗 Открыть страницу трейдера
+                        </a>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Показать ошибку
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        // Автоматическая загрузка при открытии
+        window.addEventListener('load', () => {
+            loadOrders();
+        });
+    </script>
+</body>
+</html>
+
